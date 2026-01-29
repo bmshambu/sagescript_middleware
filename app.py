@@ -30,8 +30,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Ensure environment variables used in original code are preserved if needed
-os.environ["STREAMLIT_WATCH_SYSTEM_PACKAGES"] = "false"
 
 cfg = AppConfig()
 
@@ -613,7 +611,6 @@ async def get_job_results(job_id: str):
             cursor.execute(
                 """
                 SELECT
-                    ascr.automation_id,
                     ascr.script
                 FROM automation_scripts ascr
                 JOIN user_stories us ON ascr.user_story_id = us.user_story_id
@@ -623,10 +620,17 @@ async def get_job_results(job_id: str):
             )
             automation_rows = cursor.fetchall()
 
-            automation_scripts = {
-                row["automation_id"]: row["script"] for row in automation_rows
-            }
-            
+            # 6️⃣ Process automation scripts
+            # dict comprehension to store scripts by their 
+
+            automation_scripts = automation_rows[0]["script"] if automation_rows else {}
+
+
+
+            # automation_scripts = {
+            #     row["automation_id"]: row["script"] for row in automation_rows
+            # }
+            # automation_scripts = automation_scripts[]
    
             # 3️⃣ Fetch job info
             cursor.execute(
