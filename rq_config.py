@@ -16,13 +16,18 @@ from rq import Queue
 #     socket_timeout=5
 # )
 
-
-redis_conn  = Redis(
-    host=os.environ["REDIS_HOST"],  # "redis"
-    port=int(os.environ.get("REDIS_PORT", 6379)),
+redis_conn = Redis.from_url(
+    os.environ["REDIS_URL"],
     decode_responses=True
 )
 
+# redis_conn  = Redis(
+#     host=os.environ["REDIS_HOST"],  # "redis"
+#     port=int(os.environ.get("REDIS_PORT", 6379)),
+#     decode_responses=True
+# )
+
+print("REDIS_URL =", os.environ.get("REDIS_URL"))
 
 test_generation_queue = Queue(
     name="functional-test-generation",
