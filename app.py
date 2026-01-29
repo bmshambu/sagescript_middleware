@@ -14,7 +14,7 @@ import logging
 import traceback
 import threading
 # Import your existing utilities/config
-from config import AppConfig
+
 
 from tools.save_job import save_scheduled_job
 from rq_config import test_generation_queue
@@ -31,7 +31,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-cfg = AppConfig()
+
 
 app = FastAPI(title="AI-SageScript Backend (FastAPI)")
 
