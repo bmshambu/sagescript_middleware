@@ -38,7 +38,7 @@ app = FastAPI(title="AI-SageScript Backend (FastAPI)")
 origins = [
     "http://localhost:4200",
     "http://127.0.0.1:4200",
-    "https://sageui.onrender.com/"
+    "https://sageui.onrender.com"
 ]
 
 app.add_middleware(
