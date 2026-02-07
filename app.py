@@ -675,3 +675,78 @@ async def get_job_results(job_id: str):
 
     finally:
         conn.close()
+
+@app.get("/api/dashboard/{user_id}")
+async def get_dashboard_stats(user_id: int):
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            # 1. Aggregate Top Stats
+            cur.execute("""
+                SELECT 
+                    (SELECT COUNT(*) FROM user_projects WHERE user_id = %s) as total_projects,
+                    (SELECT COUNT(*) FROM user_projects WHERE user_id = %s AND sub_project_name IS NULL) as root_projects,
+                    (SELECT COUNT(*) FROM function_test_cases ftc 
+                     JOIN scheduled_jobs sj ON ftc.job_id = sj.job_id 
+                     WHERE sj.user_id = %s) as total_test_cases,
+                    (SELECT COUNT(*) FROM automation_scripts ascr 
+                     JOIN user_stories us ON ascr.user_story_id = us.user_story_id 
+                     JOIN scheduled_jobs sj ON us.job_id = sj.job_id 
+                     WHERE sj.user_id = %s) as total_scripts
+            """, (user_id, user_id, user_id, user_id))
+            top_stats = cur.fetchone()
+
+            # 2. Recent Jobs (Last 5)
+            cur.execute("""
+                SELECT 
+                    sj.project_name as name, 
+                    sj.description, 
+                    sj.status,
+                    COUNT(ftc.test_case_id) as test_count
+                FROM scheduled_jobs sj
+                LEFT JOIN function_test_cases ftc ON sj.job_id = ftc.job_id
+                WHERE sj.user_id = %s
+                GROUP BY sj.job_id, sj.project_name, sj.description, sj.status, sj.submitted_at
+                ORDER BY sj.submitted_at DESC
+                LIMIT 5
+            """, (user_id,))
+            recent_jobs = cur.fetchall()
+
+            # 3. Job Status Breakdown
+            cur.execute("""
+                SELECT status, COUNT(*) as count
+                FROM scheduled_jobs
+                WHERE user_id = %s
+                GROUP BY status
+            """, (user_id,))
+            status_rows = cur.fetchall()
+            
+            # Formatting 
+            status_map = {row['status']: row['count'] for row in status_rows}
+
+            return {
+                "stats": [
+                    { "label": "Total Projects", "value": str(top_stats['total_projects']), "subtext": f"{top_stats['root_projects']} root folders" },
+                    { "label": "Test Cases", "value": str(top_stats['total_test_cases']), "subtext": "Generated across all jobs" },
+                    { "label": "Automation Scripts", "value": str(top_stats['total_scripts']), "subtext": "Java/Selenium/JS" },
+                    { "label": "Active Jobs", "value": str(status_map.get('IN_PROGRESS', 0) + status_map.get('IN_QUEUE', 0)), "subtext": "Currently in pipeline" }
+                ],
+                "recentJobs": [
+                    {
+                        "name": job['name'],
+                        "description": job['description'] or "No description",
+                        "status": job['status'].replace('_', ' ').title(),
+                        "testCount": job['test_count']
+                    } for job in recent_jobs
+                ],
+                "jobStatusStats": [
+                    { "label": "Completed", "value": status_map.get('COMPLETED', 0), "color": "#10b981" },
+                    { "label": "In Progress", "value": status_map.get('IN_PROGRESS', 0), "color": "#f59e0b" },
+                    { "label": "In Queue", "value": status_map.get('IN_QUEUE', 0), "color": "#6b7280" }
+                ]
+            }
+
+    
+    
+    finally:
+        conn.close()
