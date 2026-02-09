@@ -31,8 +31,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-
-
 app = FastAPI(title="AI-SageScript Backend (FastAPI)")
 
 origins = [
@@ -337,6 +335,62 @@ async def submit_tests(
     }
 
 
+
+# async def get_all_jobs():
+#     jobs_list = []
+
+#     conn = get_db()
+#     try:
+#         with conn.cursor() as cursor:
+#             cursor.execute(
+#                 """
+#                 SELECT
+#                     sj.job_id,
+#                     sj.project_name,
+#                     sj.description,
+#                     sj.status,
+#                     sj.submitted_at,
+#                     COUNT(ftc.test_case_id) AS test_count
+#                 FROM scheduled_jobs sj
+#                 LEFT JOIN function_test_cases ftc
+#                     ON sj.job_id = ftc.job_id
+#                 GROUP BY
+#                     sj.job_id,
+#                     sj.project_name,
+#                     sj.description,
+#                     sj.status,
+#                     sj.submitted_at
+#                 ORDER BY sj.submitted_at DESC
+#                 """
+#             )
+
+#             rows = cursor.fetchall()
+#             STATUS_MAP = {
+#                 "IN_QUEUE": "In Queue",
+#                 "IN_PROGRESS": "In Progress",
+#                 "COMPLETED": "Completed",
+#                 "FAILED": "Failed"
+#             }
+
+#             for row in rows:
+#                 jobs_list.append(
+#                     {
+#                         "id": row["job_id"],  # UI uses this for the list
+#                         "project": row["project_name"],
+#                         "description": row["description"],
+#                         "status": STATUS_MAP.get(row["status"], "In Queue"),
+#                         # PostgreSQL returns datetime objects already
+#                         "submitted": row["submitted_at"].strftime("%b %d, %I:%M %p"),
+#                         "tests": row["test_count"],
+#                     }
+#                 )
+
+#         return jobs_list
+
+#     finally:
+#         conn.close()
+
+
 @app.get("/api/jobs")
 async def get_all_jobs():
     jobs_list = []
@@ -346,23 +400,35 @@ async def get_all_jobs():
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT
-                    sj.job_id,
-                    sj.project_name,
-                    sj.description,
-                    sj.status,
-                    sj.submitted_at,
-                    COUNT(ftc.test_case_id) AS test_count
-                FROM scheduled_jobs sj
-                LEFT JOIN function_test_cases ftc
-                    ON sj.job_id = ftc.job_id
-                GROUP BY
-                    sj.job_id,
-                    sj.project_name,
-                    sj.description,
-                    sj.status,
-                    sj.submitted_at
-                ORDER BY sj.submitted_at DESC
+                    SELECT
+                        sj.job_id,
+                        sj.project_name,
+                        sj.description,
+                        sj.status,
+                        sj.submitted_at,
+                        COALESCE(
+                            SUM(
+                                CASE
+                                    WHEN jsonb_typeof(ftc.result) = 'array'
+                                    AND jsonb_typeof(ftc.result->0) = 'array'
+                                    THEN jsonb_array_length(ftc.result->0)
+                                    WHEN jsonb_typeof(ftc.result) = 'array'
+                                    THEN jsonb_array_length(ftc.result)
+                                    ELSE 0
+                                END
+                            ),
+                            0
+                        ) AS test_count
+                    FROM scheduled_jobs sj
+                    LEFT JOIN function_test_cases ftc
+                        ON sj.job_id = ftc.job_id
+                    GROUP BY
+                        sj.job_id,
+                        sj.project_name,
+                        sj.description,
+                        sj.status,
+                        sj.submitted_at
+                    ORDER BY sj.submitted_at DESC;
                 """
             )
 
@@ -377,11 +443,10 @@ async def get_all_jobs():
             for row in rows:
                 jobs_list.append(
                     {
-                        "id": row["job_id"],  # UI uses this for the list
+                        "id": row["job_id"],
                         "project": row["project_name"],
                         "description": row["description"],
                         "status": STATUS_MAP.get(row["status"], "In Queue"),
-                        # PostgreSQL returns datetime objects already
                         "submitted": row["submitted_at"].strftime("%b %d, %I:%M %p"),
                         "tests": row["test_count"],
                     }
@@ -391,6 +456,7 @@ async def get_all_jobs():
 
     finally:
         conn.close()
+
 
 
 @app.get("/api/jobs/{job_id}")
@@ -604,7 +670,9 @@ async def get_job_results(job_id: str):
             functional_rows = cursor.fetchall()
 
             # 2️⃣ Extract test cases
-            test_cases = extract_test_cases(functional_rows)
+            #test_cases = extract_test_cases(functional_rows)
+            results_payloads = [row["result"] for row in functional_rows]
+            test_cases = extract_test_cases(results_payloads)
             # 4️⃣ Summarize priorities
             summary = summarize_test_case_priorities(test_cases)
 
@@ -626,12 +694,6 @@ async def get_job_results(job_id: str):
 
             automation_scripts = automation_rows[0]["script"] if automation_rows else {}
 
-
-
-            # automation_scripts = {
-            #     row["automation_id"]: row["script"] for row in automation_rows
-            # }
-            # automation_scripts = automation_scripts[]
    
             # 3️⃣ Fetch job info
             cursor.execute(
