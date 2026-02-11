@@ -1,36 +1,37 @@
+
 # SageScript Middleware
 
-An AI-powered test case generation middleware service built with FastAPI and Redis Queue (RQ). This service processes test case generation requests and manages job scheduling for automated test case creation.
+AI-powered test case generation middleware built with FastAPI, PostgreSQL, and Redis Queue (RQ). This service manages test case generation jobs, prioritization, and storage, integrating with modern AI models.
 
 ## Overview
 
-SageScript Middleware is a backend service that facilitates test case generation using AI models. It provides REST API endpoints for managing test case generation jobs, extracting test data, and storing results in a PostgreSQL database.
+SageScript Middleware is a backend service for automated test case generation and management. It exposes REST API endpoints for job scheduling, test data extraction, prioritization, and result storage in PostgreSQL.
 
 ## Features
 
-- **FastAPI Web Framework**: Modern, fast Python web framework for building APIs
-- **Redis Queue Integration**: Asynchronous job processing with RQ for scalable task handling
-- **Database Support**: PostgreSQL integration for persistent data storage
-- **AI-Powered Generation**: Integration with LangChain and OpenAI/Google GenAI models
+- **FastAPI**: Modern Python web framework for APIs
+- **Redis Queue (RQ)**: Asynchronous job processing for scalability
+- **PostgreSQL**: Persistent data storage
+- **AI Model Integration**: LangChain, OpenAI, Google GenAI
 - **Test Case Management**: Extract, prioritize, and store test cases
-- **CORS Enabled**: Cross-origin resource sharing for multi-origin requests
+- **CORS Support**: Multi-origin API access
+- **Job Dashboard**: Track job status and statistics
 
 ## Project Structure
 
 ```
-sagescript_middleware/
-├── app.py                    # Main FastAPI application
-├── config.py                 # Application configuration
-├── db.py                     # Database connection and utilities
-├── rq_config.py             # Redis Queue configuration
-├── requirements.txt         # Python dependencies
+├── app.py                # Main FastAPI application and API endpoints
+├── db.py                 # PostgreSQL connection utilities
+├── rq_config.py          # Redis Queue configuration
+├── requirements.txt      # Python dependencies
+├── Sample1.ipynb         # Example Jupyter notebook
 ├── schemas/
-│   └── test_case.py        # Test case data models
+│   └── test_case.py      # Pydantic models for test cases
 └── tools/
-    ├── extract_rows.py     # Extract test cases from data
-    ├── priority_summary.py # Summarize and prioritize test cases
-    ├── save_job.py         # Save job metadata
-    └── store_test_cases.py # Store test cases in database
+   ├── extract_rows.py      # Extract test cases from DB rows
+   ├── priority_summary.py  # Summarize/prioritize test cases
+   ├── save_job.py          # Save job and user stories to DB
+   └── store_test_cases.py  # Store validated test cases as JSON
 ```
 
 ## Prerequisites
@@ -102,8 +103,8 @@ Main FastAPI application with REST API endpoints for:
 - Test data extraction and processing
 - Priority summarization
 
-### `config.py`
-Application configuration management including database URLs, API keys, and service settings.
+
+<!-- config.py is not present; configuration is via environment variables and .env file. -->
 
 ### `db.py`
 PostgreSQL database connection and query utilities using psycopg.
@@ -111,16 +112,18 @@ PostgreSQL database connection and query utilities using psycopg.
 ### `rq_config.py`
 Redis Queue configuration for async job processing.
 
+
 ### `tools/`
 Utility modules:
-- **extract_rows.py**: Extract test cases from raw data sources
-- **priority_summary.py**: Analyze and prioritize test cases
-- **save_job.py**: Persist job information to database
-- **store_test_cases.py**: Store generated test cases in PostgreSQL
+- **extract_rows.py**: Extract and flatten test cases from DB rows (handles nested/JSON)
+- **priority_summary.py**: Summarize and count test cases by priority
+- **save_job.py**: Save scheduled jobs and user stories to the database
+- **store_test_cases.py**: Validate and store test cases as JSON files
+
 
 ### `schemas/`
 Pydantic models for data validation:
-- **test_case.py**: Test case data model definition
+- **test_case.py**: Test case and test case list schema
 
 ## Dependencies
 
@@ -137,31 +140,30 @@ Key Python packages:
 - **Streamlit**: Data visualization (optional)
 - **sentence-transformers**: Semantic similarity
 
+
 ## API Endpoints
 
-Common endpoints (detailed in Swagger UI at `/docs`):
-- `POST /generate-test-cases`: Create a new test case generation job
-- `GET /job/{job_id}`: Get job status and results
-- `POST /extract-test-cases`: Extract test cases from data
-- `POST /summarize-priorities`: Analyze and prioritize test cases
+Key endpoints (see `/docs` for full details):
+- `POST /api/generate-test-cases`: Create a new test case generation job
+- `GET /api/jobs`: List all jobs
+- `GET /api/jobs/{job_id}`: Get job details and results
+- `POST /api/jobs/{job_id}/regenerate`: Re-queue a job for processing
+- `DELETE /api/jobs/{job_id}`: Delete a job
+- `GET /api/dashboard/{user_id}`: Get dashboard stats for a user
+
 
 ## Environment Variables
 
 ```
-DATABASE_URL          # PostgreSQL connection string
-REDIS_URL            # Redis connection string
-OPENAI_API_KEY       # OpenAI API key
-GOOGLE_API_KEY       # Google GenAI API key
-LOG_LEVEL            # Logging level (DEBUG, INFO, WARNING, ERROR)
+DATABASE_URL   # PostgreSQL connection string
+REDIS_URL      # Redis connection string
+OPENAI_API_KEY # OpenAI API key (optional)
+GOOGLE_API_KEY # Google GenAI API key (optional)
+LOG_LEVEL      # Logging level (optional)
 ```
+
 
 ## Development
-
-### Running Tests
-
-```bash
-pytest tests/
-```
 
 ### Code Formatting
 
@@ -228,4 +230,4 @@ For issues and questions, please open an issue in the project repository.
 
 ---
 
-**Last Updated**: January 29, 2026
+**Last Updated**: February 11, 2026
