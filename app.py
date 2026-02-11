@@ -596,7 +596,20 @@ async def delete_job(job_id: str):
 
 
 
-
+@app.post("/api/onboard/request")
+async def request_onboarding(details: dict):
+    # 1. Save to a 'pending_requests' table
+    # 2. Trigger a mock mail sending process
+    return {
+        "status": "success",
+        "message": f"Verification email sent to {details['email']}. Please verify to receive credentials."
+    }
+@app.get("/api/onboard/verify/{token}")
+async def verify_user(token: str):
+    # 1. Find request by token
+    # 2. Create actual user in USERS table
+    # 3. Email 'Don'  credentials
+    return {"message": "Email verified. Your credentials have been sent to your inbox."}
 
 @app.post("/api/jobs/{job_id}/regenerate")
 async def regenerate_job(job_id: str, background_tasks: BackgroundTasks):
